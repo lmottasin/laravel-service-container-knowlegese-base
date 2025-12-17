@@ -495,11 +495,19 @@ php examples/BuildYourContainer.php
 - Circular dependency detection
 - A working container just like Laravel's!
 
+**🤖 Automatic Testing:**
+- Implement the `SimpleContainer` class
+- Submit a Pull Request
+- GitHub Actions will automatically test your implementation
+- 10 comprehensive PHPUnit tests validate your work
+- Tests include auto-resolution, singletons, circular dependencies, and more
+
 **Perfect for:**
 - Understanding how Laravel's container actually works
 - Practicing PHP Reflection API
 - Learning dependency injection concepts deeply
 - Building interview-ready skills
+- Contributing to open source with automated testing
 
 ### Exercise 1: Basic Container Implementation
 

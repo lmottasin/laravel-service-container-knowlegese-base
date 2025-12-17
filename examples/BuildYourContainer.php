@@ -240,34 +240,66 @@ class UserService {
 // EMPTY CONTAINER CLASS FOR YOU TO IMPLEMENT
 // ===========================================
 
+/**
+ * IMPLEMENT THIS CLASS - IT WILL BE TESTED BY PHPUNIT!
+ *
+ * Requirements:
+ * 1. bind($abstract, $concrete) - Store binding recipe
+ * 2. singleton($abstract, $concrete) - Mark as shared instance
+ * 3. make($abstract) - Resolve and create objects
+ * 4. resolve($class) - Use reflection to auto-resolve dependencies
+ * 5. Circular dependency detection
+ * 6. Singleton instance reuse
+ * 7. Closure execution for custom bindings
+ */
 class SimpleContainer
 {
     private array $bindings = [];      // Stores our recipes for creating objects
     private array $instances = [];      // Stores shared (singleton) objects
     private array $resolving = [];      // Tracks what we're currently building
 
-    // TODO: Implement this method based on STEP 3
+    /**
+     * Store a binding recipe for later use
+     * @param string $abstract The abstract name (interface or class name)
+     * @param mixed $concrete The concrete implementation (class name or closure)
+     */
     public function bind($abstract, $concrete = null)
     {
-        // YOUR CODE HERE
+        // YOUR IMPLEMENTATION HERE
+        throw new Exception("NOT IMPLEMENTED: bind() method");
     }
 
-    // TODO: Implement this method based on STEP 4
+    /**
+     * Bind as singleton (shared instance)
+     * @param string $abstract The abstract name
+     * @param mixed $concrete The concrete implementation
+     */
     public function singleton($abstract, $concrete = null)
     {
-        // YOUR CODE HERE
+        // YOUR IMPLEMENTATION HERE
+        throw new Exception("NOT IMPLEMENTED: singleton() method");
     }
 
-    // TODO: Implement this method based on STEP 5
+    /**
+     * Main method - resolve and return the requested object
+     * @param string $abstract The class/interface to resolve
+     * @return mixed The resolved object
+     */
     public function make($abstract)
     {
-        // YOUR CODE HERE
+        // YOUR IMPLEMENTATION HERE
+        throw new Exception("NOT IMPLEMENTED: make() method");
     }
 
-    // TODO: Implement this method based on STEP 6
+    /**
+     * Use reflection to automatically resolve class dependencies
+     * @param string $class The class to resolve
+     * @return object The resolved class instance
+     */
     private function resolve($class)
     {
-        // YOUR CODE HERE
+        // YOUR IMPLEMENTATION HERE
+        throw new Exception("NOT IMPLEMENTED: resolve() method");
     }
 }
 
@@ -304,9 +336,20 @@ echo "🎉 All tests passed! Your container is working!\n";
 */
 
 echo "\n💡 NEXT STEPS:\n";
-echo "1. Implement all the TODO methods above\n";
-echo "2. Uncomment the test code\n";
-echo "3. Run: php examples/BuildYourContainer.php\n";
-echo "4. Try adding more features (contextual bindings, primitive injection, etc.)\n\n";
+echo "1. Implement all methods in SimpleContainer class above\n";
+echo "2. Remove the 'throw new Exception' placeholders\n";
+echo "3. Test locally: php examples/BuildYourContainer.php\n";
+echo "4. Run full tests: composer install && vendor/bin/phpunit\n";
+echo "5. Submit PR - GitHub Actions will test your implementation!\n\n";
 
-echo "📚 Once you're done, check out SimpleContainer.php to see a working implementation!\n";
+echo "🧪 YOUR IMPLEMENTATION WILL BE TESTED FOR:\n";
+echo "✅ Auto-resolution of dependencies\n";
+echo "✅ Bindings and Singletons\n";
+echo "✅ Circular dependency detection\n";
+echo "✅ Closure execution\n";
+echo "✅ Interface resolution\n";
+echo "✅ Proper instance management\n";
+echo "✅ Error handling\n\n";
+
+echo "💡 TIP: Check examples/SimpleContainer.php for a reference implementation\n";
+echo "💡 TIP: Run tests locally before submitting PR\n\n";

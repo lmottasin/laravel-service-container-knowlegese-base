@@ -1,0 +1,107 @@
+name: Service Container Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, hash, json, pcre, session, simplexml, spl, tokenizer, curl
+        coverage: xdebug
+
+    - name: Validate composer.json and composer.lock
+      run: composer validate --strict
+
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ matrix.php-version }}-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-${{ matrix.php-version }}-
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+
+    - name: Run PHPUnit Tests
+      run: vendor/bin/phpunit tests/ServiceContainerTest.php --verbose
+
+    - name: Check code style
+      run: |
+        # Check if the exercise class still contains placeholder exceptions
+        if grep -q "NOT IMPLEMENTED" examples/BuildYourContainer.php; then
+          echo "❌ SimpleContainer class is not fully implemented!"
+          echo "Please implement all required methods before submitting."
+          exit 1
+        fi
+        echo "✅ SimpleContainer implementation looks complete"
+
+    - name: Test syntax
+      run: php -l examples/BuildYourContainer.php
+
+    - name: Run basic functionality test
+      run: |
+        php -r "
+        require_once 'examples/BuildYourContainer.php';
+        \$container = new SimpleContainer();
+
+        // Basic functionality test
+        \$container->bind('test', 'TestService');
+        \$service = \$container->make('test');
+
+        if (!\$service instanceof TestService) {
+          echo '❌ Basic binding test failed';
+          exit(1);
+        }
+        echo '✅ Basic functionality test passed';
+        "
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+
+    - name: Check implementation requirements
+      run: |
+        # Verify all required methods exist
+        if ! php -l examples/BuildYourContainer.php; then
+          echo "❌ PHP syntax error in BuildYourContainer.php"
+          exit 1
+        fi
+
+        # Check for proper method signatures
+        if ! php -r "
+        require_once 'examples/BuildYourContainer.php';
+        \$container = new SimpleContainer();
+
+        \$methods = ['bind', 'singleton', 'make'];
+        foreach (\$methods as \$method) {
+          if (!method_exists(\$container, \$method)) {
+            echo \"❌ Missing method: \$method\n\";
+            exit(1);
+          }
+        }
+        echo '✅ All required methods exist';
+        "; then
+          exit 1
+        fi
+
+        echo "✅ Code quality checks passed"

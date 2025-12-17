@@ -1,5 +1,5 @@
 {
-    "name": "laravel-service-container-knowledge-base",
+    "name": "service-container/knowledge-base",
     "description": "Complete guide to Laravel's Service Container with hands-on exercises",
     "type": "project",
     "require": {

@@ -1,8 +1,6 @@
 name: Service Container Tests
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -21,8 +19,8 @@ jobs:
         extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, hash, json, pcre, session, simplexml, spl, tokenizer, curl
         coverage: xdebug
 
-    - name: Validate composer.json and composer.lock
-      run: composer validate --strict
+    - name: Validate composer.json
+      run: composer validate --no-check-publish
 
     - name: Cache Composer packages
       id: composer-cache

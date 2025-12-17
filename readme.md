@@ -483,11 +483,23 @@ This is why method injection works in controllers but not your custom classes - 
 
 ## 🧪 Practical Knowledge Check
 
-Test your understanding with these hands-on exercises. Run the test file:
+Build your own service container from scratch to truly understand how it works! This hands-on exercise walks you through creating a complete dependency injection container step by step.
 
 ```bash
-php examples/ServiceContainerTest.php
+php examples/BuildYourContainer.php
 ```
+
+**What you'll build:**
+- Auto-resolution using PHP Reflection
+- Bindings and Singletons
+- Circular dependency detection
+- A working container just like Laravel's!
+
+**Perfect for:**
+- Understanding how Laravel's container actually works
+- Practicing PHP Reflection API
+- Learning dependency injection concepts deeply
+- Building interview-ready skills
 
 ### Exercise 1: Basic Container Implementation
 
@@ -593,12 +605,12 @@ echo "Singleton count: " . $counter2->count; // Should be 2 if singleton
 * 🚀 Understanding contextual bindings
 * 🚀 Knowing how Laravel's router resolves controller methods
 
-**Run the test file to check your knowledge:**
+**Test your understanding by building:**
 ```bash
-php examples/ServiceContainerTest.php
+php examples/BuildYourContainer.php
 ```
 
-The test includes practical coding challenges and multiple-choice questions to verify your understanding!
+Follow the step-by-step guide to build your own container and truly understand how Laravel works under the hood!
 
 ---
 

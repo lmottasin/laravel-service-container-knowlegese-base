@@ -1,6 +1,6 @@
-# Laravel Service Container & Dependency Injection 🚀
+# Laravel Service Container & Dependency Injection
 
-> **A comprehensive guide to mastering Laravel's most powerful feature**
+> **A comprehensive guide from "what is it" to "how it works" under the hood**
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-red)](https://laravel.com/docs/12.x/container)
 [![Level](https://img.shields.io/badge/Level-Beginner%20to%20Advanced-blue)](https://github.com/your-repo)
@@ -8,127 +8,299 @@
 
 ---
 
-## 📖 What You'll Learn
+## Table of Contents
 
-This knowledge base covers everything you need to know about Laravel's Service Container and Dependency Injection, from beginner concepts to advanced interview-ready techniques.
-
-✅ **Core Concepts** - Understanding the "why" behind the container
-✅ **Practical Examples** - Real-world code you can use today
-✅ **8 Usage Patterns** - Complete coverage of container use cases
-✅ **Interview Preparation** - Senior-level questions and answers
-✅ **Best Practices** - When and how to use the container effectively
-
----
-
-## 🎯 Quick Start: The Big Idea
-
-**In one sentence:** The Laravel Service Container is your app's personal assistant that automatically creates and manages objects and their dependencies.
-
-**Before Container:**
-```php
-// You have to manually create everything
-$mailer = new Mailer(new Logger('app'), new Config());
-$service = new NewsletterService($mailer);
-$controller = new NewsletterController($service);
-```
-
-**With Container:**
-```php
-// Laravel handles it all automatically
-Route::get('/', NewsletterController::class);
-```
+1. [What Actually Is a Service Container?](#what-actually-is-a-service-container)
+2. [Why Should You Use It?](#why-should-you-use-it)
+3. [How Many Ways to Use It? (8 Usage Patterns)](#how-many-ways-to-use-it-8-usage-patterns)
+4. [LaravelDaily Beginner's Guide Summary](#laraveldaily-beginners-guide-summary)
+5. [How Laravel Does It Internally (The Magic Explained)](#how-laravel-does-it-internally-the-magic-explained)
+6. [Interview Preparation](#interview-preparation)
+7. [Common Pitfalls & Solutions](#common-pitfalls--solutions)
 
 ---
 
-## 🏗️ Understanding the Foundation
+## What Actually Is a Service Container?
 
-### What is a Service Container?
+Let's start with a simple analogy...
 
-A service container is simply a **registry** where you:
-1. **Bind** a key to a creation method
-2. **Resolve** that key to get an instance
+**Without a Service Container:**
+Imagine you're building a car. Every time you need a car, you have to:
+* Build the engine
+* Build the wheels
+* Build the chassis
+* Connect everything together
+* Repeat this process every single time
+
+**With a Service Container:**
+Imagine you have a car factory that knows how to build cars. You just say "I need a car" and the factory handles everything.
 
 ```php
-// Simple binding
-$this->app->bind('newsletter', function () {
-    return new NewsletterService();
+// Without Container - Manual work every time
+$logger = new FileLogger('app.log');
+$database = new Database($logger);
+$userService = new UserService($database);
+
+// With Container - Just ask for it
+$userService = app(UserService::class); // Laravel builds everything!
+```
+
+### The Technical Definition
+
+A Service Container is simply a **registry** that:
+* Stores recipes for creating objects
+* Builds objects automatically when you ask for them
+* Manages object lifetimes (new every time vs. shared)
+
+```php
+// The recipe
+$this->app->bind(UserService::class, function () {
+    return new UserService(new Database(new Logger()));
 });
 
-// Get the instance
-$newsletter = resolve('newsletter');
+// Get the result
+$service = resolve(UserService::class);
 ```
 
-### The Secret Sauce
-
-**🔥 Important Fact:** The Laravel application itself IS the service container!
+### Key Insight
+The Laravel application itself IS the service container!
 
 ```php
-// These all do the SAME thing:
-$this->app->bind(...);     // Inside service providers
+// These all access the same container:
+$this->app->bind(...);     // In service providers
 app()->bind(...);         // Anywhere
-resolve('something');     // Get an instance
+resolve('something');     // Get instances
 App::bind(...);          // Static facade
 ```
 
 ---
 
-## 🚀 Zero-Configuration Magic
+## Why Should You Use It?
 
-Laravel can automatically resolve classes without any configuration. This is called **Zero-Configuration Resolution**.
+### The Problems It Solves
 
-### The "Auto-Magic" in Action 🪄
+**Before Service Container:**
+```php
+class UserController extends Controller
+{
+    public function store()
+    {
+        // Tight coupling - hard to test!
+        $userService = new UserService(
+            new Database(
+                new FileLogger('app.log')
+            )
+        );
 
-Think of the Service Container as Laravel's internal mechanism for "auto-magically" handling class injections. You don't need to work with it directly - just understand how to use it practically!
+        // Repetitive - same setup in every method!
+        return $userService->create(request()->all());
+    }
 
-#### When It Works Automatically
+    public function update($id)
+    {
+        // Repeated code...
+        $userService = new UserService(
+            new Database(
+                new FileLogger('app.log')
+            )
+        );
+
+        return $userService->update($id, request()->all());
+    }
+}
+```
+
+**After Service Container:**
+```php
+class UserController extends Controller
+{
+    public function __construct(
+        private UserService $userService  // Laravel injects this!
+    ) {}
+
+    public function store()
+    {
+        // No setup needed!
+        return $this->userService->create(request()->all());
+    }
+
+    public function update($id)
+    {
+        // Still no setup needed!
+        return $this->userService->update($id, request()->all());
+    }
+}
+```
+
+### The Benefits
+
+| Benefit | Before Container | After Container |
+|---------|------------------|-----------------|
+| **DRY Principle** | Repeat setup everywhere | Define once, reuse everywhere |
+| **Testing** | Hard to mock dependencies | Easy to inject mocks |
+| **Flexibility** | Hard-coded dependencies | Easy to swap implementations |
+| **Maintenance** | Changes needed in many places | Changes needed in one place |
+
+---
+
+## How Many Ways to Use It? (8 Usage Patterns)
+
+### Pattern 1: Automatic Resolution
+**When to use:** Concrete classes with resolvable dependencies
 
 ```php
-class Logger {}
-class Database {
-    public function __construct(Logger $logger) {}
+// No binding needed!
+class EmailController extends Controller
+{
+    public function send(UserService $userService)  // Laravel creates this
+    {
+        $userService->sendWelcomeEmail();
+    }
 }
-class UserService {
-    public function __construct(Database $db) {}
-}
+```
 
-// Laravel resolves ALL of this automatically:
-Route::get('/users', function (UserService $service) {
-    return $service->getAllUsers();
+### Pattern 2: Simple Binding
+**When to use:** Object creation needs custom logic
+
+```php
+// In Service Provider
+$this->app->bind(ApiClient::class, function () {
+    return new ApiClient(
+        config('services.api.key'),
+        config('services.api.timeout', 30)
+    );
 });
 ```
 
-**How it works:**
-1. Laravel sees `UserService` in the parameter
-2. Sees `UserService` needs `Database`
-3. Sees `Database` needs `Logger`
-4. Creates `Logger` → Creates `Database` → Creates `UserService`
-5. Injects everything automatically!
+### Pattern 3: Singleton Binding
+**When to use:** Expensive objects or shared state
 
-#### Real-World Examples You Use Every Day
+```php
+// Creates only ONCE per request
+$this->app->singleton(DatabaseConnection::class, function () {
+    return new DatabaseConnection(
+        config('database.host'),
+        config('database.username'),
+        config('database.password')
+    );
+});
+```
 
-**✅ Form Request Injection (Most Common):**
+### Pattern 4: Instance Binding
+**When to use:** You already have an object to share
+
+```php
+// Register existing object
+$cache = new RedisCache($redisConnection);
+$this->app->instance(CacheInterface::class, $cache);
+```
+
+### Pattern 5: Interface to Implementation
+**When to use:** Working with interfaces
+
+```php
+interface PaymentGatewayInterface {
+    public function charge($amount);
+}
+
+class StripePayment implements PaymentGatewayInterface {}
+
+// Tell Laravel which implementation to use
+$this->app->bind(
+    PaymentGatewayInterface::class,
+    StripePayment::class
+);
+```
+
+### Pattern 6: Contextual Binding
+**When to use:** Different implementations for different classes
+
+```php
+$this->app
+    ->when(ProductionController::class)
+    ->needs(PaymentGatewayInterface::class)
+    ->give(StripePayment::class);
+
+$this->app
+    ->when(TestingController::class)
+    ->needs(PaymentGatewayInterface::class)
+    ->give(MockPaymentGateway::class);
+```
+
+### Pattern 7: Contextual Primitive Binding
+**When to use:** Different values for different classes
+
+```php
+$this->app
+    ->when(ProductionService::class)
+    ->needs('$apiTimeout')
+    ->give(60);
+
+$this->app
+    ->when(DevelopmentService::class)
+    ->needs('$apiTimeout')
+    ->give(5);
+```
+
+### Pattern 8: One-Off Resolution
+**When to use:** Temporary objects with specific parameters
+
+```php
+$service = app()->makeWith(ApiClient::class, [
+    'apiKey' => 'temporary-key',
+    'timeout' => 10
+]);
+```
+
+---
+
+## LaravelDaily Beginner's Guide Summary
+
+Based on Laravel Daily's practical approach, here are the key takeaways for beginners:
+
+### The "Auto-Magic" Reality
+
+Laravel's Service Container is **"auto-magically"** handling class injections. You don't need to understand the complex internals - just know how to use it practically!
+
+### Where Injection Works Automatically
+
+**These locations support automatic injection:**
+* Controllers (method parameters AND constructor)
+* Event Listeners
+* Middleware
+* Queued Jobs
+
+**These DON'T support automatic injection:**
+* Your custom classes (only constructor injection works)
+* Random methods in your own classes
+* Static methods
+
+### Practical Examples You Use Every Day
+
+**1. Form Request Injection (Most Common):**
 ```php
 public function store(StoreUserRequest $request)
 {
     // Laravel creates StoreUserRequest automatically!
-    // No need: $request = new StoreUserRequest();
-
     $validated = $request->validated();
     return User::create($validated);
 }
 ```
 
-**✅ Multiple Dependencies in Controllers:**
+**2. Multiple Dependencies:**
 ```php
-public function store(StoreUserRequest $request, UserService $userService)
-{
-    // Laravel creates BOTH automatically!
-    $validated = $request->validated();
-    return $userService->create($validated);
+public function store(
+    StoreUserRequest $request,
+    UserService $userService,
+    EmailService $emailService
+) {
+    // Laravel creates ALL THREE automatically!
+    $user = $userService->create($request->validated());
+    $emailService->sendWelcome($user);
 }
 ```
 
-**✅ Constructor Injection (For Reusable Dependencies):**
+**3. Constructor Injection (Reusable Dependencies):**
 ```php
 class UserController extends Controller
 {
@@ -140,28 +312,10 @@ class UserController extends Controller
     {
         return $this->userService->getAll();
     }
-
-    public function store(StoreUserRequest $request)
-    {
-        return $this->userService->create($request->validated());
-    }
 }
 ```
 
-#### 🎯 Where Injection Works (Important!)
-
-**✅ Injection works automatically in:**
-- Controllers ✅ (Method and Constructor injection)
-- Event Listeners ✅
-- Middleware ✅
-- Queued Jobs ✅
-
-**❌ Injection doesn't work in:**
-- Custom classes (only constructor injection works)
-- Random methods in your own classes
-- Static methods
-
-#### Key Rule to Remember 🧠
+### The Golden Rule
 
 > **If you're in a Controller/Listener/Middleware/Job:** Type-hint anything in your methods and Laravel creates it automatically!
 >
@@ -171,7 +325,7 @@ class UserController extends Controller
 // ❌ THIS DOESN'T WORK
 class MyCustomClass {
     public function doSomething(UserService $service) {
-        // $service will be NULL - Laravel doesn't inject here!
+        // $service will be NULL!
     }
 }
 
@@ -185,349 +339,193 @@ class MyCustomClass {
 }
 ```
 
-### When It Fails (Important!)
-
-Zero-config resolution fails in **2 scenarios**:
-
-```php
-// ❌ PROBLEM 1: Primitive values
-class Car {
-    public function __construct($color, Gas $gas) {}
-    // Laravel can't guess what $color should be!
-}
-
-// ❌ PROBLEM 2: Interface dependencies
-class MusicController {
-    public function __construct(MusicServiceInterface $service) {}
-    // Laravel doesn't know which implementation to use!
-}
-```
-
-**Error:** `Target [Interface] is not instantiable` or `Unresolvable dependency resolving`
-
-This is where **manual container bindings** come in!
-
 ---
 
-## 🛠️ 8 Essential Usage Patterns
+## How Laravel Does It Internally (The Magic Explained)
 
-### 1️⃣ Automatic Resolution
-**Use when:** You have concrete classes only
+Let's peek behind the curtain! Laravel's Service Container is just sophisticated PHP code. Here's how it actually works:
 
-```php
-// No binding needed!
-$service = app(UserService::class);
-```
+### 1. The Core Container Logic
 
-### 2️⃣ Simple Binding
-**Use when:** Object creation requires custom logic
+See: [`examples/SimpleContainer.php`](examples/SimpleContainer.php) - A simplified version showing the basic concept
 
 ```php
-$this->app->bind(Car::class, function () {
-    return new Car(new Gas(), 5); // Custom quantity
-});
-```
-
-### 3️⃣ Singleton Binding
-**Use when:** You want ONE shared instance
-
-```php
-$this->app->singleton(MusicService::class, function () {
-    return new SpotifyService(env('API_KEY'));
-});
-
-// Every resolve() returns the SAME instance
-```
-
-### 4️⃣ Instance Binding
-**Use when:** You already have an object to share
-
-```php
-$service = new SpotifyService($realApiKey);
-$this->app->instance(MusicServiceInterface::class, $service);
-```
-
-### 5️⃣ Interface → Implementation Binding
-**Use when:** You need to resolve interfaces
-
-```php
-$this->app->bind(
-    MusicServiceInterface::class,
-    SpotifyService::class
-);
-```
-
-### 6️⃣ Contextual Binding
-**Use when:** Different classes need different implementations
-
-```php
-$this->app
-    ->when(OnlineMusicController::class)
-    ->needs(MusicServiceInterface::class)
-    ->give(SpotifyService::class);
-
-$this->app
-    ->when(OfflineMusicController::class)
-    ->needs(MusicServiceInterface::class)
-    ->give(SoundCloudService::class);
-```
-
-### 7️⃣ Contextual Primitive Binding
-**Use when:** Different classes need different values
-
-```php
-$this->app
-    ->when(OnlineController::class)
-    ->needs('$apiTimeout')
-    ->give(30);
-
-$this->app
-    ->when(OfflineController::class)
-    ->needs('$apiTimeout')
-    ->give(5);
-```
-
-### 8️⃣ One-Off Resolution with `makeWith()`
-**Use when:** You need to resolve with specific values once
-
-```php
-$service = app()->makeWith(SpotifyService::class, [
-    'apiKey' => 'temporary-key'
-]);
-```
-
----
-
-## 🔧 Where to Register Services
-
-### Service Providers
-
-Services are registered in **Service Providers**, most commonly:
-
-```php
-// app/Providers/AppServiceProvider.php
-class AppServiceProvider extends ServiceProvider
+class SimpleContainer
 {
-    public function register()
+    private array $bindings = [];
+    private array $instances = [];
+
+    public function bind($abstract, $concrete)
     {
-        // This is where container bindings go!
-        $this->app->singleton(CacheService::class, function () {
-            return new RedisCacheService();
-        });
+        $this->bindings[$abstract] = $concrete;
+    }
+
+    public function make($abstract)
+    {
+        // 1. Check if it's already bound
+        if (isset($this->bindings[$abstract])) {
+            $concrete = $this->bindings[$abstract];
+
+            // 2. If it's a closure, execute it
+            if ($concrete instanceof Closure) {
+                return $concrete($this);
+            }
+
+            // 3. If it's a class name, resolve it
+            return $this->resolve($concrete);
+        }
+
+        // 4. Try to resolve the class directly (auto-resolution)
+        return $this->resolve($abstract);
+    }
+
+    private function resolve($class)
+    {
+        // Use reflection to see constructor dependencies
+        $reflection = new ReflectionClass($class);
+        $constructor = $reflection->getConstructor();
+
+        if (!$constructor) {
+            // No constructor = no dependencies
+            return new $class();
+        }
+
+        // Get constructor parameters
+        $parameters = $constructor->getParameters();
+        $dependencies = [];
+
+        foreach ($parameters as $parameter) {
+            // Recursively resolve each dependency
+            $dependency = $parameter->getType()->getName();
+            $dependencies[] = $this->make($dependency);
+        }
+
+        // Create the instance with all dependencies
+        return new $class(...$dependencies);
     }
 }
 ```
 
-### Quick Reference
+### 2. Laravel's Actual Resolution Process
 
-| Location | How to Access | When to Use |
-|----------|---------------|-------------|
-| Service Provider | `$this->app` | During registration |
-| Controllers | `app()` | Anywhere |
-| Anywhere | `resolve()` | When getting instances |
-| Anywhere | `App::` | Static facade style |
+See: [`examples/LaravelLikeResolution.php`](examples/LaravelLikeResolution.php) - More realistic Laravel-style implementation
+
+The real Laravel container uses these steps:
+
+* **Check for existing instances** (singletons)
+* **Check bindings** (what you registered)
+* **Check aliases** (shortcuts to other bindings)
+* **Use Reflection** to auto-resolve
+* **Handle edge cases** (primitives, interfaces, circular dependencies)
+
+### 3. Zero-Configuration Resolution
+
+See: [`examples/ZeroConfigDemo.php`](examples/ZeroConfigDemo.php) - Demonstrates automatic resolution
+
+```php
+// Laravel can automatically resolve this:
+class Logger {}
+class Database {
+    public function __construct(Logger $logger) {}
+}
+class UserService {
+    public function __construct(Database $db) {}
+}
+
+// Laravel's internal process:
+$service = app(UserService::class);
+// 1. Check if UserService has manual binding → No
+// 2. Use reflection on UserService constructor
+// 3. See it needs Database → resolve Database
+// 4. See Database needs Logger → resolve Logger
+// 5. Logger has no dependencies → create it
+// 6. Create Database with Logger
+// 7. Create UserService with Database
+```
+
+### 4. How Laravel Handles Controllers
+
+See: [`examples/ControllerResolution.php`](examples/ControllerResolution.php) - Shows controller magic
+
+When Laravel handles a route like this:
+
+```php
+Route::get('/users', [UserController::class, 'index']);
+```
+
+Laravel internally does:
+1. **Create UserController instance** (using container)
+2. **Resolve index method parameters** (using container)
+3. **Call the method** with resolved parameters
+
+This is why method injection works in controllers but not your custom classes - Laravel has special handling for controllers!
+
+### Key Takeaway from the Internals
+
+**The "magic" is just:**
+* **Reflection API** - PHP lets us inspect classes and methods
+* **Recursive resolution** - Laravel resolves dependencies recursively
+* **Special handling** - Controllers get extra treatment
+* **Caching** - Resolved instances are stored for performance
 
 ---
 
-## 🎨 Real-World Examples
-
-### Example 1: Payment Processing
-
-```php
-// Interface first (always!)
-interface PaymentGatewayInterface {
-    public function charge($amount);
-}
-
-// Multiple implementations
-class StripePayment implements PaymentGatewayInterface {
-    public function charge($amount) { /* Stripe logic */ }
-}
-
-class PayPalPayment implements PaymentGatewayInterface {
-    public function charge($amount) { /* PayPal logic */ }
-}
-
-// Service Provider binding
-class PaymentServiceProvider extends ServiceProvider {
-    public function register() {
-        $this->app->bind(
-            PaymentGatewayInterface::class,
-            StripePayment::class  // Default implementation
-        );
-    }
-}
-
-// Controller usage
-class PaymentController extends Controller {
-    public function __construct(
-        private PaymentGatewayInterface $payment
-    ) {}
-
-    public function charge(Request $request) {
-        return $this->payment->charge($request->amount);
-    }
-}
-```
-
-### Example 2: API Client Management
-
-```php
-// Singleton for API client (expensive to create)
-$this->app->singleton(GithubApiClient::class, function () {
-    return new GithubApiClient(
-        config('services.github.token'),
-        config('services.github.timeout')
-    );
-});
-
-// Contextual binding for different environments
-$this->app
-    ->when(DevelopmentController::class)
-    ->needs(GithubApiClient::class)
-    ->give(function () {
-        return new MockGithubApiClient();
-    });
-```
-
-### Example 3: Configuration Management
-
-```php
-// Primitive binding for different environments
-$this->app
-    ->when(ProductionService::class)
-    ->needs('$maxConnections')
-    ->giveConfig('database.production.max_connections');
-
-$this->app
-    ->when(DevelopmentService::class)
-    ->needs('$maxConnections')
-    ->give(10); // Lower limit for dev
-```
-
----
-
-## 🤔 When Should You Use the Container?
-
-### ✅ DO Use Manual Container Work When:
-
-1. **Interface Binding** - You need to resolve interfaces
-2. **Primitives** - Constructor needs specific values
-3. **Package Development** - Creating reusable packages
-4. **Custom Facades** - Building your own facades
-5. **Context-Specific Behavior** - Different implementations for different classes
-6. **Laravel Overrides** - Replacing core Laravel services
-
-### ❌ DON'T Overuse When:
-
-1. **Simple Value Objects** - Just `new` them directly
-2. **No Dependencies** - Constructor has no parameters
-3. **One-Off Objects** - Use `new` instead of container
-4. **Performance Critical** - Container has tiny overhead
-
----
-
-## 🎓 Interview Preparation
+## Interview Preparation
 
 ### Senior-Level Questions & Answers
 
-**Q: Why can Laravel resolve `Request` automatically?**
-> **A:** Because `Request` is a concrete class with no constructor dependencies, so Laravel's zero-configuration resolution can create it instantly without any bindings.
+**Q: What exactly is the Laravel Service Container?**
+> **A:** It's a dependency injection container that manages object creation and lifecycle. It's essentially a registry that stores recipes for creating objects and automatically builds dependency graphs when you request an object.
+
+**Q: How does Laravel resolve dependencies automatically?**
+> **A:** Using PHP's Reflection API. Laravel inspects class constructors, identifies their dependencies, and recursively creates those dependencies until the complete object graph is built.
+
+**Q: What's the difference between `bind()` and `singleton()`?**
+> **A:** `bind()` creates a new instance every time you resolve it. `singleton()` creates one instance and reuses it for all subsequent resolutions. Use singleton for expensive objects or when you need shared state.
 
 **Q: Why do interfaces fail without manual binding?**
-> **A:** Because interfaces cannot be instantiated - they're contracts without implementation. The container needs to know which concrete class to use.
+> **A:** Because interfaces cannot be instantiated - they're contracts without implementation. The container needs explicit instructions about which concrete class to use for an interface.
+
+**Q: When should you NOT use the service container?**
+> **A:** For simple value objects without dependencies, performance-critical code where container overhead matters, or when you need one-off objects with specific parameters.
 
 **Q: What causes `BindingResolutionException`?**
 > **A:** Three main causes:
 > 1. Missing interface → implementation binding
-> 2. Unresolvable primitive parameters
+> 2. Unresolvable primitive parameters in constructors
 > 3. Circular dependencies
 
-**Q: What's the difference between `bind()` and `singleton()`?**
-> **A:** `bind()` creates a NEW instance every time you resolve it. `singleton()` creates ONE instance and reuses it for all subsequent resolutions.
+### Interview-Ready Summary Statement
 
-**Q: How does Laravel resolve nested dependencies?**
-> **A:** Recursively! It uses reflection to inspect constructors, resolves each dependency, and works its way up the dependency tree until all objects are created.
-
-**Q: Why is constructor injection preferred over method injection?**
-> **A:**
-> - **Explicit dependencies** - Constructor shows exactly what a class needs
-> - **Better testing** - Easy to mock dependencies
-> - **Immutable objects** - Dependencies can't change during object lifecycle
-> - **Cleaner architecture** - Forces dependency-conscious design
-
-**Q: Why not always use the container?**
-> **A:** Overhead and complexity! For simple value objects or performance-critical code, direct instantiation (`new MyClass()`) is often cleaner and faster.
-
-### 💡 Interview-Ready Summary Statement
-
-> *"The Laravel Service Container is the framework's dependency resolution engine that manages object creation, dependency injection, and lifecycle control, enabling loosely coupled, testable, and maintainable applications through inversion of control."*
+> *"The Laravel Service Container is a dependency injection container that manages object creation, dependency resolution, and lifecycle control through reflection-based auto-resolution and manual bindings, enabling loosely coupled, testable, and maintainable applications."*
 
 ---
 
-## 📋 Quick Reference Cheat Sheet
-
-### Container Methods
-
-| Method | Purpose | Example |
-|--------|---------|---------|
-| `bind()` | Register new instance each time | `$this->app->bind(Service::class, Impl::class)` |
-| `singleton()` | Register one shared instance | `$this->app->singleton(Cache::class, RedisCache::class)` |
-| `instance()` | Register existing object | `$this->app->instance(Api::class, $apiObject)` |
-| `make()` | Resolve a class | `app()->make(UserService::class)` |
-| `makeWith()` | Resolve with parameters | `app()->makeWith(Service::class, ['key' => 'value'])` |
-| `resolve()` | Alias for make() | `resolve(UserService::class)` |
-
-### Contextual Binding Patterns
-
-```php
-// Interface binding
-$this->app->when(Controller::class)
-          ->needs(Interface::class)
-          ->give(Implementation::class);
-
-// Primitive binding
-$this->app->when(Service::class)
-          ->needs('$parameter')
-          ->give('value');
-
-// Factory binding
-$this->app->when(Service::class)
-          ->needs(Logger::class)
-          ->give(function () {
-              return new Logger('custom-channel');
-          });
-```
-
----
-
-## 🚨 Common Pitfalls & Solutions
+## Common Pitfalls & Solutions
 
 ### Pitfall 1: Circular Dependencies
+
 ```php
 // ❌ BAD
 class A {
     public function __construct(B $b) {}
 }
 class B {
-    public function __construct(A $a) {} // Circular!
+    public function __construct(A $a) {}  // Circular!
 }
 
-// ✅ SOLUTION: Use interface injection or refactor
+// ✅ SOLUTION: Use interfaces or refactor
+interface LoggerInterface {}
+class A implements LoggerInterface {
+    public function __construct(B $b) {}
+}
+class B {
+    public function __construct(LoggerInterface $logger) {}
+}
 ```
 
-### Pitfall 2: Over-engineering
-```php
-// ❌ BAD: Container for simple objects
-$this->app->bind(Address::class, function () {
-    return new Address();
-});
+### Pitfall 2: Interface Without Binding
 
-// ✅ BETTER: Just use new()
-$address = new Address();
-```
-
-### Pitfall 3: Missing Interface Bindings
 ```php
 // ❌ ERROR: Target [PaymentInterface] is not instantiable
 class PaymentController {
@@ -538,17 +536,48 @@ class PaymentController {
 $this->app->bind(PaymentInterface::class, StripePayment::class);
 ```
 
+### Pitfall 3: Method Injection in Custom Classes
+
+```php
+// ❌ THIS DOESN'T WORK
+class MyService {
+    public function doWork(Repository $repo) {
+        // $repo will be NULL
+    }
+}
+
+// ✅ SOLUTION: Use constructor injection
+class MyService {
+    public function __construct(private Repository $repo) {}
+
+    public function doWork() {
+        return $this->repo->findAll();
+    }
+}
+```
+
+### Pitfall 4: Over-engineering Simple Objects
+
+```php
+// ❌ BAD: Container for simple data objects
+$this->app->bind(Address::class, function () {
+    return new Address();
+});
+
+// ✅ BETTER: Just use new()
+$address = new Address();
+```
+
 ---
 
-## 📚 Additional Resources
+## Additional Resources
 
-- [Laravel 12.x Documentation](https://laravel.com/docs/12.x/container)
-- [Laravel Daily Service Container Guide](https://laraveldaily.com/post/laravel-service-container-beginners)
-- [Laravel News Container Articles](https://laravel-news.com/tags/service-container)
+* [Laravel 12.x Documentation](https://laravel.com/docs/12.x/container)
+* [Laravel Daily Service Container Guide](https://laraveldaily.com/post/laravel-service-container-beginners)
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Found something confusing? Want to add more examples? Please contribute!
 
@@ -559,12 +588,12 @@ Found something confusing? Want to add more examples? Please contribute!
 
 ---
 
-## 📄 License
+## License
 
 This knowledge base is open-sourced under the [MIT License](LICENSE).
 
 ---
 
-**⭐ Pro Tip:** Bookmark this page! The Service Container is one of Laravel's most powerful features, and mastering it will significantly improve your architecture skills.
+**Final Pro Tip:** Understanding the Service Container separates junior Laravel developers from senior ones. Master it, and you'll write cleaner, more testable, and more maintainable code!
 
-**Happy coding! 🎉**
+**Happy coding!**
